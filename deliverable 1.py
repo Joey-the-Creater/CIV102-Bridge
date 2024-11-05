@@ -1,7 +1,12 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-
+compressive_strength=30
+tensile_strength=6
+shear_strength_matboard=4
+young=4000
+poisson=0.2
+shear_strength_cemant=2
 x_train = [52, 228, 392, 568, 732, 908]
 x_start = 0
 x_end = 1200
@@ -26,7 +31,7 @@ for i in range(6):
 bending_moment.append(0)
 
 # Convert bending moment to 10^4 Nmm
-bending_moment = [bm / 10000 for bm in bending_moment]
+bmd = [bm / 10000 for bm in bending_moment]
 
 # Plotting shear force diagram
 plt.figure(figsize=(12, 6))
@@ -43,14 +48,14 @@ for i, (x, y) in enumerate(zip([0, x_start] + real_x_train + [x_end], shear_forc
 
 # Plotting bending moment diagram
 plt.subplot(2, 1, 2)
-plt.plot([0] + real_x_train + [x_end], bending_moment)
+plt.plot([0] + real_x_train + [x_end], bmd)
 plt.title('Bending Moment Diagram')
 plt.xlabel('Position along the bridge (mm)')
 plt.ylabel('Bending Moment (10^4 Nmm)')
 plt.grid(True)
 
 # Annotate bending moment values
-for i, (x, y) in enumerate(zip([0] + real_x_train + [x_end], bending_moment)):
+for i, (x, y) in enumerate(zip([0] + real_x_train + [x_end], bmd)):
     plt.text(x, y, f'{y:.2f}', fontsize=8, verticalalignment='bottom')
 
 plt.tight_layout()
@@ -100,9 +105,12 @@ def second_moment_of_area(rectangles):
         I_total += I_rect + area * dy**2
 
     return I_total
-rectangles = [(10, 0, 80, 1.27), (10, 1.27, 1.27, 75-1.27), (90-1.27, 1.27, 1.27, 75-1.27),(0,75,100,1.27),(10+1.27,75-1.27,5,1.27),(90-1.27-5,75-1.27,5,1.27)]
+rectangles = [(10, 0, 80, 1.27), (10, 1.27, 1.27, 75-1.27), 
+                (90-1.27, 1.27, 1.27, 75-1.27),(0,75,100,1.27),
+                (10+1.27,75-1.27,5,1.27),(90-1.27-5,75-1.27,5,1.27)]
 centroid = centroid_of_rectangles(rectangles)
-print(f"Centroid of the rectangles is at: {centroid}")
-I = second_moment_of_area(rectangles)/(10**6)
-print(f"Second moment of area of the rectangles is: {I}10e6 mm^4")
-print(max(bending_moment)*(75+1.27-centroid)/I,max(bending_moment)*(centroid)/I)
+print(f"Centroid of the rectangles is at: {centroid}mm")
+I = second_moment_of_area(rectangles)
+print(f"Second moment of area of the rectangles is: {I/(10**6)} 10e6 mm^4")
+print(f"{max(bending_moment)*(75+1.27-centroid)/I}MPa",f"{max(bending_moment)*(centroid)/I}MPa")
+#N mm*mm/mm^4
