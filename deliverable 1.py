@@ -1,3 +1,4 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -5,7 +6,7 @@ x_train = [52, 228, 392, 568, 732, 908]
 x_start = 0
 x_end = 1200
 p_train = [182 / 2, 182 / 2, 135 / 2, 135 / 2, 135 / 2, 135 / 2]
-real_x_train = [i + 117 for i in x_train]
+real_x_train = [i + 120 for i in x_train]
 
 start_moment = sum(real_x_train[i] * p_train[i] for i in range(6))
 end_p = start_moment / 1200
@@ -54,3 +55,54 @@ for i, (x, y) in enumerate(zip([0] + real_x_train + [x_end], bending_moment)):
 
 plt.tight_layout()
 plt.show()
+
+
+def centroid_of_rectangles(rectangles):
+    """
+    Calculate the centroid of multiple rectangles.
+    
+    Parameters:
+    rectangles (list of tuples): List of rectangles, each defined by (x, y, width, height).
+    
+    Returns:
+    tuple: (x, y) coordinates of the centroid.
+    """
+    total_area = 0
+    cy_total = 0
+
+    for (x, y, width, height) in rectangles:
+        area = width * height
+        cy = y + height / 2
+        total_area += area
+        cy_total += cy * area
+
+    centroid_y = cy_total / total_area
+
+    return centroid_y
+def second_moment_of_area(rectangles):
+    """
+    Calculate the second moment of area (I) for multiple rectangles.
+    
+    Parameters:
+    rectangles (list of tuples): List of rectangles, each defined by (x, y, width, height).
+    
+    Returns:
+    float: Second moment of area (I).
+    """
+    I_total = 0
+    centroid_y = centroid_of_rectangles(rectangles)
+
+    for (x, y, width, height) in rectangles:
+        area = width * height
+        cy = y + height / 2
+        dy = cy - centroid_y
+        I_rect = (width * height**3) / 12
+        I_total += I_rect + area * dy**2
+
+    return I_total
+rectangles = [(10, 0, 80, 1.27), (10, 1.27, 1.27, 75-1.27), (90-1.27, 1.27, 1.27, 75-1.27),(0,75,100,1.27),(10+1.27,75-1.27,5,1.27),(90-1.27-5,75-1.27,5,1.27)]
+centroid = centroid_of_rectangles(rectangles)
+print(f"Centroid of the rectangles is at: {centroid}")
+I = second_moment_of_area(rectangles)/(10**6)
+print(f"Second moment of area of the rectangles is: {I}10e6 mm^4")
+print(max(bending_moment)*(75+1.27-centroid)/I,max(bending_moment)*(centroid)/I)
