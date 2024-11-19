@@ -8,14 +8,15 @@ young=4000
 poisson=0.2
 shear_strength_cemant=2
 x_train = [52, 228, 392, 568, 732, 908]
+x_start_train=120
 x_start = 0
 x_end = 1200
 p_train = [182 / 2, 182 / 2, 135 / 2, 135 / 2, 135 / 2, 135 / 2]
-real_x_train = [i + 120 for i in x_train]
+real_x_train = [i + x_start_train for i in x_train]
 
 start_moment = sum(real_x_train[i] * p_train[i] for i in range(6))
 end_p = start_moment / 1200
-start_p = 452 - end_p
+start_p = sum(p_train) - end_p
 
 # Shear force calculation
 shear_force = [0, start_p]
@@ -102,7 +103,7 @@ def second_moment_of_area(rectangles):
         cy = y + height / 2
         dy = cy - centroid_y
         I_rect = (width * height**3) / 12
-        I_total += I_rect + area * dy**2
+        I_total += I_rect + area * dy**2 #parallel axis theorem
 
     return I_total
 rectangles = [(10, 0, 80, 1.27), (10, 1.27, 1.27, 75-1.27), 
@@ -112,5 +113,5 @@ centroid = centroid_of_rectangles(rectangles)
 print(f"Centroid of the rectangles is at: {centroid}mm")
 I = second_moment_of_area(rectangles)
 print(f"Second moment of area of the rectangles is: {I/(10**6)} 10e6 mm^4")
-print(f"{max(bending_moment)*(75+1.27-centroid)/I}MPa",f"{max(bending_moment)*(centroid)/I}MPa")
+print(f"Flexural Stress at the top: {max(bending_moment)*(75+1.27-centroid)/I}MPa",f"Flexural Stress at the bottom: {max(bending_moment)*(centroid)/I}MPa")
 #N mm*mm/mm^4
