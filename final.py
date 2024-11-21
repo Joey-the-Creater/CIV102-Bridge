@@ -97,17 +97,31 @@ def first_moment_of_area(rectangles, h):
                 first_moment += area * (y + new_height / 2)
 
     return first_moment
-def shear_stress_failure(rectangles,pos):
+def shear_stress_failure(rectangles,crit_pos,V):
+    for y in crit_pos:
+        Q=first_moment_of_area(rectangles,y)
+        b=find_width_at_a_given_height(rectangles,y)
+        I=second_moment_of_area(rectangles)
+        shear=V*Q/(I*b)
+        if shear>shear_strength_cemant:
+            print(f"Beam at {y}mm in shear fail at glue")
+    cy=centroid_of_rectangles(rectangles)
+    Q=first_moment_of_area(rectangles,cy)
+    b=0
+    for i in range(len(rectangles)):
+        if rectangles[i][1]<cy and rectangles[i][1]+rectangles[i][3]>cy:
+            b+=rectangles[i][2]
     I=second_moment_of_area(rectangles)
-    height=0
-    stress=max_shear_force[pos]*(75+1.27)/I
-    if stress>shear_strength_matboard:
-        print(f"Beam at {pos}mm in shear fail")
+    shear=V*Q/(I*b)
+    if shear>shear_strength_matboard:
+        print(f"Beam at {y}mm in shear fail at centroid")
+
 def flexural_stress_failure(rectangles,pos):
     I=second_moment_of_area(rectangles)
-    height=0
-    stress_at_top=max_bending_moment[pos]*(75+1.27-height)/I
-    stress_at_bottom=max_bending_moment[pos]*(height)/I
+    height=centroid_of_rectangles(rectangles)
+    stress_at_top=abs(max_bending_moment[pos]*(75+1.27-height)/I)
+    stress_at_bottom=abs(max_bending_moment[pos]*(height)/I)
+    print(f"Flexural Stress at the top: {stress_at_top}MPa",f"Flexural Stress at the bottom: {stress_at_bottom}MPa")
     if stress_at_top>compressive_strength:
         print(f"Top of the beam at {pos}mm in compression fail")
     if stress_at_bottom>tensile_strength:
@@ -173,11 +187,15 @@ def cross_section(component, position):
             cross_section_rectangles.append((x, y, width, height))
     
     return cross_section_rectangles
-
+def check_failure(component):
+    for pos in range(0,1200):
+        print(f"Checking position {pos}mm")
+        rectangle=cross_section(component,pos)
+        flexural_stress_failure(rectangle,pos)
+        crit_pos=find_glued_joint(rectangle) #for glue
+        shear_stress_failure(rectangle,crit_pos,max_shear_force[pos])
 #x_pos,y_pos,width,height,starting pos along the bridge, ending pos along the bridge
 component = [(10, 0, 80, 1.27,0,1200), (10, 1.27, 1.27, 75-1.27,0,1200), 
                 (90-1.27, 1.27, 1.27, 75-1.27,0,1200),(0,75,100,1.27,0,1200),
                 (10+1.27,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,5,1.27,0,1200)]
-print(find_glued_joint(cross_section(component,10)))
-print(find_width_at_a_given_height(cross_section(component,10),1.27))
-print(first_moment_of_area((cross_section(component,10)),centroid_of_rectangles(cross_section(component,10))))
+check_failure(component)
