@@ -72,25 +72,29 @@ def find_glued_joint(rectangles):
                 if (rectangles[i][1]+rectangles[i][3]==y and rectangles[j][1]==y) or (rectangles[i][1]==y and rectangles[j][1]+rectangles[j][3]==y):
                     glued_joints.append(y)
     return list(set(glued_joints))
+def find_width_at_a_given_height(rectangles,height):
+    width_up=0
+    width_down=0
+    for i in range(len(rectangles)):
+        if rectangles[i][1]+rectangles[i][3]==height:
+            width_up+=rectangles[i][2]
+        if rectangles[i][1]==height:
+            width_down+=rectangles[i][2]
+    return min(width_up,width_down)
 
-def first_moment_of_area(rectangles):
-    """
-    Calculate the first moment of area for multiple rectangles.
-    
-    Parameters:
-    rectangles (list of tuples): List of rectangles, each defined by (x, y, width, height).
-    
-    Returns:
-    float: First moment of area.
-    """
-    first_moment = 0
+def first_moment_of_area(rectangles, h):
     centroid_y = centroid_of_rectangles(rectangles)
+    first_moment = 0
 
     for (x, y, width, height) in rectangles:
         area = width * height
         cy = y + height / 2
-        dy = cy - centroid_y
-        first_moment += area * dy
+        if y + height <= h:
+            first_moment += area * cy
+        else:
+            if y<h and y+height>h:
+                new_height=h-y
+                first_moment += area * (y + new_height / 2)
 
     return first_moment
 def shear_stress_failure(rectangles,pos):
@@ -175,3 +179,5 @@ component = [(10, 0, 80, 1.27,0,1200), (10, 1.27, 1.27, 75-1.27,0,1200),
                 (90-1.27, 1.27, 1.27, 75-1.27,0,1200),(0,75,100,1.27,0,1200),
                 (10+1.27,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,5,1.27,0,1200)]
 print(find_glued_joint(cross_section(component,10)))
+print(find_width_at_a_given_height(cross_section(component,10),1.27))
+print(first_moment_of_area((cross_section(component,10)),centroid_of_rectangles(cross_section(component,10))))
