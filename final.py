@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-compressive_strength = 30
-tensile_strength = 6
+compressive_strength = 6
+tensile_strength = 30
 shear_strength_matboard = 4
 young = 4000
 poisson = 0.2
@@ -10,8 +10,11 @@ shear_strength_cemant = 2
 x_train = [52, 228, 392, 568, 732, 908]
 x_start = 0
 x_end = 1200
-p_train = [135 / 2, 135 / 2, 135 / 2, 135 / 2,182 / 2, 182 / 2]
-
+p_train = [400/6]*6
+FOS_tension=100
+FOS_compression=100
+FOS_shear_plate=100
+FOS_glue=100
 # Function to calculate shear force and bending moment at a given train position
 def calculate_shear_force_and_bending_moment(train_position):
     real_x_train = [i + train_position for i in x_train]
@@ -98,11 +101,14 @@ def first_moment_of_area(rectangles, h):
 
     return first_moment
 def shear_stress_failure(rectangles,crit_pos,V):
+    global FOS_shear_plate,FOS_glue
+    V=abs(V)
     for y in crit_pos:
         Q=first_moment_of_area(rectangles,y)
         b=find_width_at_a_given_height(rectangles,y)
         I=second_moment_of_area(rectangles)
         shear=V*Q/(I*b)
+        FOS_glue=min(FOS_glue,shear_strength_cemant/shear)
         if shear>shear_strength_cemant:
             print(f"Beam at {y}mm in shear fail at glue")
     cy=centroid_of_rectangles(rectangles)
@@ -113,15 +119,25 @@ def shear_stress_failure(rectangles,crit_pos,V):
             b+=rectangles[i][2]
     I=second_moment_of_area(rectangles)
     shear=V*Q/(I*b)
+    FOS_shear_plate=min(FOS_shear_plate,shear_strength_matboard/shear)
     if shear>shear_strength_matboard:
         print(f"Beam at {y}mm in shear fail at centroid")
 
 def flexural_stress_failure(rectangles,pos):
+    global FOS_tension,FOS_compression
     I=second_moment_of_area(rectangles)
     height=centroid_of_rectangles(rectangles)
     stress_at_top=abs(max_bending_moment[pos]*(75+1.27-height)/I)
     stress_at_bottom=abs(max_bending_moment[pos]*(height)/I)
     print(f"Flexural Stress at the top: {stress_at_top}MPa",f"Flexural Stress at the bottom: {stress_at_bottom}MPa")
+    try:
+        FOS_tension=min(FOS_tension,compressive_strength/stress_at_top)
+    except:
+        FOS_tension=FOS_tension
+    try:
+        FOS_compression=min(FOS_compression,tensile_strength/stress_at_bottom)
+    except:
+        FOS_compression=FOS_compression
     if stress_at_top>compressive_strength:
         print(f"Top of the beam at {pos}mm in compression fail")
     if stress_at_bottom>tensile_strength:
@@ -199,3 +215,7 @@ component = [(10, 0, 80, 1.27,0,1200), (10, 1.27, 1.27, 75-1.27,0,1200),
                 (90-1.27, 1.27, 1.27, 75-1.27,0,1200),(0,75,100,1.27,0,1200),
                 (10+1.27,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,5,1.27,0,1200)]
 check_failure(component)
+print(f"FOS for tension: {FOS_tension}")
+print(f"FOS for compression: {FOS_compression}")
+print(f"FOS for shear at plate: {FOS_shear_plate}")
+print(f"FOS for shear at glue: {FOS_glue}")

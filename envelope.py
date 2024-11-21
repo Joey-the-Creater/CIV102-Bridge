@@ -10,7 +10,7 @@ shear_strength_cemant = 2
 x_train = [52, 228, 392, 568, 732, 908]
 x_start = 0
 x_end = 1200
-p_train = [135 / 2, 135 / 2, 135 / 2, 135 / 2,182 / 2, 182 / 2]
+p_train = [400 / 6]*6
 
 # Function to calculate shear force and bending moment at a given train position
 def calculate_shear_force_and_bending_moment(train_position):
@@ -49,13 +49,15 @@ max_shear_force = [0 for x in range(x_end + 1)]
 max_bending_moment = [0 for x in range(x_end + 1)]
 
 # Calculate envelope functions
-for train_position in range(-52,292):
+for train_position in range(-51,292):
     shear_force, bending_moment = calculate_shear_force_and_bending_moment(train_position)
     for i in range(1201):
         max_bending_moment[i] = max(max_bending_moment[i], bending_moment[i])
     for i in range(1201):
         if abs(shear_force[i])>abs(max_shear_force[i]):
             max_shear_force[i] = shear_force[i]
+    if abs(max_bending_moment[556]-69260)<=0.01:
+        print(train_position)
 # Plotting envelope functions
 plt.figure(figsize=(12, 6))
 # Plotting maximum shear force envelope
@@ -73,6 +75,17 @@ plt.title('Maximum Bending Moment Envelope')
 plt.xlabel('Position along the bridge (mm)')
 plt.ylabel('Bending Moment (Nmm)')
 plt.grid(True)
-
+# Marking the highest shear force on the graph
+max_shear_force_value = max(max_shear_force, key=abs)
+max_shear_force_position = max_shear_force.index(max_shear_force_value)
+plt.subplot(2, 1, 1)
+plt.plot(max_shear_force_position, max_shear_force_value, 'ro')
+plt.text(max_shear_force_position, max_shear_force_value, f'({max_shear_force_position}, {max_shear_force_value})')
+# Marking the highest bending moment on the graph
+max_bending_moment_value = max(max_bending_moment)
+max_bending_moment_position = max_bending_moment.index(max_bending_moment_value)
+plt.subplot(2, 1, 2)
+plt.plot(max_bending_moment_position, max_bending_moment_value, 'ro')
+plt.text(max_bending_moment_position, max_bending_moment_value, f'({max_bending_moment_position}, {max_bending_moment_value})')
 plt.tight_layout()
 plt.show()
