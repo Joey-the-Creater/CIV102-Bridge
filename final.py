@@ -58,9 +58,44 @@ for train_position in range(-52,292):
             max_shear_force[i] = shear_force[i]
 def check_failure(component,pos):
     rectangle=cross_section(component,pos)
-    flexural_stress(rectangle,pos)
+    flexural_stress_failure(rectangle,pos)
+    shear_stress_failure(rectangle,pos)
     pass
-def flexural_stress(rectangles,pos)：
+def find_glued_joint(rectangles):
+    glued_joints = []
+    for (x, y, width, height) in rectangles:
+        glued_joints.append(y)
+        glued_joints.append(y + height)
+    glued_joints = sorted(set(glued_joints))
+    return glued_joints
+
+def first_moment_of_area(rectangles):
+    """
+    Calculate the first moment of area for multiple rectangles.
+    
+    Parameters:
+    rectangles (list of tuples): List of rectangles, each defined by (x, y, width, height).
+    
+    Returns:
+    float: First moment of area.
+    """
+    first_moment = 0
+    centroid_y = centroid_of_rectangles(rectangles)
+
+    for (x, y, width, height) in rectangles:
+        area = width * height
+        cy = y + height / 2
+        dy = cy - centroid_y
+        first_moment += area * dy
+
+    return first_moment
+def shear_stress_failure(rectangles,pos):
+    I=second_moment_of_area(rectangles)
+    height=0
+    stress=max_shear_force[pos]*(75+1.27)/I
+    if stress>shear_strength_matboard:
+        print(f"Beam at {pos}mm in shear fail")
+def flexural_stress_failure(rectangles,pos):
     I=second_moment_of_area(rectangles)
     height=0
     stress_at_top=max_bending_moment[pos]*(75+1.27-height)/I
