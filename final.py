@@ -10,7 +10,7 @@ shear_strength_cemant = 2
 x_train = [52, 228, 392, 568, 732, 908]
 x_start = 0
 x_end = 1200
-p_train = [182 / 2, 182 / 2, 135 / 2, 135 / 2, 135 / 2, 135 / 2]
+p_train = [135 / 2, 135 / 2, 135 / 2, 135 / 2,182 / 2, 182 / 2]
 
 # Function to calculate shear force and bending moment at a given train position
 def calculate_shear_force_and_bending_moment(train_position):
@@ -63,11 +63,15 @@ def check_failure(component,pos):
     pass
 def find_glued_joint(rectangles):
     glued_joints = []
+    y_pos=[]
     for (x, y, width, height) in rectangles:
-        glued_joints.append(y)
-        glued_joints.append(y + height)
-    glued_joints = sorted(set(glued_joints))
-    return glued_joints
+        y_pos.append(y+height)
+    for y in y_pos:
+        for i in range(len(rectangles)-1):
+            for j in range(i+1,len(rectangles)):
+                if (rectangles[i][1]+rectangles[i][3]==y and rectangles[j][1]==y) or (rectangles[i][1]==y and rectangles[j][1]+rectangles[j][3]==y):
+                    glued_joints.append(y)
+    return list(set(glued_joints))
 
 def first_moment_of_area(rectangles):
     """
@@ -165,13 +169,9 @@ def cross_section(component, position):
             cross_section_rectangles.append((x, y, width, height))
     
     return cross_section_rectangles
+
 #x_pos,y_pos,width,height,starting pos along the bridge, ending pos along the bridge
 component = [(10, 0, 80, 1.27,0,1200), (10, 1.27, 1.27, 75-1.27,0,1200), 
                 (90-1.27, 1.27, 1.27, 75-1.27,0,1200),(0,75,100,1.27,0,1200),
-                (10+1.27,75-1.27,5,1.270,1200),(90-1.27-5,75-1.27,5,1.27,0,1200)]
-centroid = centroid_of_rectangles(rectangles)
-print(f"Centroid of the rectangles is at: {centroid}mm")
-I = second_moment_of_area(rectangles)
-print(f"Second moment of area of the rectangles is: {I/(10**6)} 10e6 mm^4")
-print(f"Flexural Stress at the top: {max(bending_moment)*(75+1.27-centroid)/I}MPa",f"Flexural Stress at the bottom: {max(bending_moment)*(centroid)/I}MPa")
-#N mm*mm/mm^4
+                (10+1.27,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,5,1.27,0,1200)]
+print(find_glued_joint(cross_section(component,10)))
