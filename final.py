@@ -63,7 +63,7 @@ for train_position in range(-52,293):
     for i in range(1201):
         if abs(shear_force[i])>abs(max_shear_force[i]):
             max_shear_force[i] = shear_force[i]
-print(max(max_bending_moment),max(max_shear_force))
+print(f"Max Bending Moment{max(max_bending_moment)}",f"Max Shear Force:{max(max_shear_force)}" )
 def local_buckling_stress(b, t, boundary_condition):
     k=0
     if boundary_condition == 'type 1':
@@ -74,7 +74,9 @@ def local_buckling_stress(b, t, boundary_condition):
         k = 6
     sigma_cr = (k * (math.pi ** 2) * young) / (12 * (1 - poisson ** 2)) * ((t / b) ** 2)
     return sigma_cr
-
+def shear_buckling_stress(a, h):
+    tao_cr = (5* (math.pi**2) * young) / (12 * (1 - poisson ** 2))*((1.27/h)**2+(1.27/a)**2)
+    return tao_cr
 def check_failure(component,pos):
     rectangle=cross_section(component,pos)
     flexural_stress_failure(rectangle,pos)
@@ -115,8 +117,8 @@ def first_moment_of_area(rectangles, h):
                 new_height=h-y
                 first_moment += width*new_height * (centroid_y-(y+new_height / 2))
     return first_moment
-def shear_stress_failure(rectangles,crit_pos,V):
-    global FOS_shear_plate,FOS_glue
+def shear_stress_failure(rectangles,crit_pos,V,pos):
+    global FOS_shear_plate,FOS_glue, FOS_buck_4
     V=abs(V)
     for y in crit_pos:
         Q=first_moment_of_area(rectangles,y)
@@ -135,6 +137,11 @@ def shear_stress_failure(rectangles,crit_pos,V):
     I=second_moment_of_area(rectangles)
     shear=V*Q/(I*b)
     FOS_shear_plate=min(FOS_shear_plate,shear_strength_matboard/shear)
+    for i in range(len(tao_shear_buck)):
+        if pos<=diaphram_pos[i+1] and pos>=diaphram_pos[i]:
+            tao_cr=tao_shear_buck[i]
+            break
+    FOS_buck_4=min(FOS_buck_4,tao_cr/shear)
     #if shear>shear_strength_matboard:
     #    print(f"Beam at {y}mm in shear fail at centroid")
 
@@ -148,11 +155,11 @@ def flexural_stress_failure(rectangles,pos):
     stress_at_bottom=abs(max_bending_moment[pos]*(height)/I)
     #print(f"Flexural Stress at the top: {stress_at_top}MPa",f"Flexural Stress at the bottom: {stress_at_bottom}MPa")
     try:
-        FOS_tension=min(FOS_tension,compressive_strength/stress_at_top)
+        FOS_tension=min(FOS_tension,tensile_strength/stress_at_bottom)
     except:
         FOS_tension=FOS_tension
     try:
-        FOS_compression=min(FOS_compression,tensile_strength/stress_at_bottom)
+        FOS_compression=min(FOS_compression,compressive_strength/stress_at_top)
     except:
         FOS_compression=FOS_compression
     try:
@@ -238,11 +245,16 @@ def check_failure(component):
         rectangle=cross_section(component,pos)
         flexural_stress_failure(rectangle,pos)
         crit_pos=find_glued_joint(rectangle) #for glue
-        shear_stress_failure(rectangle,crit_pos,max_shear_force[pos])
+        shear_stress_failure(rectangle,crit_pos,max_shear_force[pos],pos)
 #x_pos,y_pos,width,height,starting pos along the bridge, ending pos along the bridge
 component = [(10, 0, 80, 1.27,0,1200), (10, 1.27, 1.27, 75-1.27,0,1200), 
                 (90-1.27, 1.27, 1.27, 75-1.27,0,1200),(0,75,100,1.27,0,1200),
                 (10+1.27,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,5,1.27,0,1200)]
+
+diaphram_pos=[0,400,800,1200]
+tao_shear_buck=[]
+for i in range(len(diaphram_pos)-1):
+    tao_shear_buck.append(shear_buckling_stress(diaphram_pos[i+1]-diaphram_pos[i],75-1.27))
 cy=centroid_of_rectangles(cross_section(component,0))
 strength_buck_1=local_buckling_stress(77.46,1.27,'type 1')
 strength_buck_2=local_buckling_stress(10,1.27,'type 2')
@@ -255,9 +267,11 @@ print(f"FOS for shear at plate: {FOS_shear_plate}")
 print(f"FOS for shear at glue: {FOS_glue}")
 print(f"Strength of buckling type 1: {strength_buck_1}MPa",
           f"Strength of buckling type 2: {strength_buck_2}MPa",
-          f"Strength of buckling type 3: {strength_buck_3}MPa")
+          f"Strength of buckling type 3: {strength_buck_3}MPa",
+          f"Strength of buckling type 4: {tao_shear_buck}MPa")
 print(f"FOS for buckling type 1: {FOS_buck_1}")
 print(f"FOS for buckling type 2: {FOS_buck_2}")
 print(f"FOS for buckling type 3: {FOS_buck_3}")
+print(f"FOS for buckling type 4: {FOS_buck_4}")
 print(f"First Moment of Area at centroid: {first_moment_of_area(cross_section(component,0),cy)}")
 print(f"First Moment of Area at 75mm: {first_moment_of_area(cross_section(component,0),75)}")
