@@ -47,24 +47,23 @@ def calculate_shear_force_and_bending_moment(train_position):
                     break
     # Bending moment calculation
     bending_moment = [0]*1201
-    for i in range(1,1200):
-        bending_moment[i]=bending_moment[i-1]+shear_all[i]
+    for i in range(1,1201):
+        bending_moment[i]=bending_moment[i-1]+shear_all[i-1]
 
     return shear_all, bending_moment
 
 # Initialize envelope functions
 max_shear_force = [0 for x in range(x_end + 1)]
 max_bending_moment = [0 for x in range(x_end + 1)]
-
 # Calculate envelope functions
-for train_position in range(-52,292):
+for train_position in range(-52,293):
     shear_force, bending_moment = calculate_shear_force_and_bending_moment(train_position)
     for i in range(1201):
         max_bending_moment[i] = max(max_bending_moment[i], bending_moment[i])
     for i in range(1201):
         if abs(shear_force[i])>abs(max_shear_force[i]):
             max_shear_force[i] = shear_force[i]
-            
+print(max(max_bending_moment),max(max_shear_force))
 def local_buckling_stress(b, t, boundary_condition):
     k=0
     if boundary_condition == 'type 1':
@@ -91,7 +90,7 @@ def find_glued_joint(rectangles):
             for j in range(i+1,len(rectangles)):
                 if (rectangles[i][1]+rectangles[i][3]==y and rectangles[j][1]==y) or (rectangles[i][1]==y and rectangles[j][1]+rectangles[j][3]==y):
                     glued_joints.append(y)
-    return list(set(glued_joints))
+    return [75]
 def find_width_at_a_given_height(rectangles,height):
     width_up=0
     width_down=0
@@ -110,12 +109,11 @@ def first_moment_of_area(rectangles, h):
         area = width * height
         cy = y + height / 2
         if y + height <= h:
-            first_moment += area * cy
+            first_moment += area * (centroid_y-cy)
         else:
             if y<h and y+height>h:
                 new_height=h-y
-                first_moment += area * (y + new_height / 2)
-
+                first_moment += width*new_height * (centroid_y-(y+new_height / 2))
     return first_moment
 def shear_stress_failure(rectangles,crit_pos,V):
     global FOS_shear_plate,FOS_glue
@@ -137,8 +135,8 @@ def shear_stress_failure(rectangles,crit_pos,V):
     I=second_moment_of_area(rectangles)
     shear=V*Q/(I*b)
     FOS_shear_plate=min(FOS_shear_plate,shear_strength_matboard/shear)
-    if shear>shear_strength_matboard:
-        print(f"Beam at {y}mm in shear fail at centroid")
+    #if shear>shear_strength_matboard:
+    #    print(f"Beam at {y}mm in shear fail at centroid")
 
 def flexural_stress_failure(rectangles,pos):
     global FOS_tension,FOS_compression
@@ -148,7 +146,7 @@ def flexural_stress_failure(rectangles,pos):
     height=centroid_of_rectangles(rectangles)
     stress_at_top=abs(max_bending_moment[pos]*(75+1.27-height)/I)
     stress_at_bottom=abs(max_bending_moment[pos]*(height)/I)
-    print(f"Flexural Stress at the top: {stress_at_top}MPa",f"Flexural Stress at the bottom: {stress_at_bottom}MPa")
+    #print(f"Flexural Stress at the top: {stress_at_top}MPa",f"Flexural Stress at the bottom: {stress_at_bottom}MPa")
     try:
         FOS_tension=min(FOS_tension,compressive_strength/stress_at_top)
     except:
@@ -236,12 +234,7 @@ def cross_section(component, position):
     return cross_section_rectangles
 def check_failure(component):
     global strength_buck_1,strength_buck_2,strength_buck_3
-    cy=centroid_of_rectangles(cross_section(component,0))
-    strength_buck_1=local_buckling_stress(67.46,1.27,'type 1')
-    strength_buck_2=local_buckling_stress(10,1.27,'type 2')
-    strength_buck_3=local_buckling_stress(75-cy,1.27,'type 3')
     for pos in range(0,1200):
-        print(f"Checking position {pos}mm")
         rectangle=cross_section(component,pos)
         flexural_stress_failure(rectangle,pos)
         crit_pos=find_glued_joint(rectangle) #for glue
@@ -250,7 +243,12 @@ def check_failure(component):
 component = [(10, 0, 80, 1.27,0,1200), (10, 1.27, 1.27, 75-1.27,0,1200), 
                 (90-1.27, 1.27, 1.27, 75-1.27,0,1200),(0,75,100,1.27,0,1200),
                 (10+1.27,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,5,1.27,0,1200)]
+cy=centroid_of_rectangles(cross_section(component,0))
+strength_buck_1=local_buckling_stress(77.46,1.27,'type 1')
+strength_buck_2=local_buckling_stress(10,1.27,'type 2')
+strength_buck_3=local_buckling_stress(75-cy,1.27,'type 3')
 check_failure(component)
+print(f"Second moment of area: {second_moment_of_area(cross_section(component,0))}")
 print(f"FOS for tension: {FOS_tension}")
 print(f"FOS for compression: {FOS_compression}")
 print(f"FOS for shear at plate: {FOS_shear_plate}")
@@ -261,3 +259,5 @@ print(f"Strength of buckling type 1: {strength_buck_1}MPa",
 print(f"FOS for buckling type 1: {FOS_buck_1}")
 print(f"FOS for buckling type 2: {FOS_buck_2}")
 print(f"FOS for buckling type 3: {FOS_buck_3}")
+print(f"First Moment of Area at centroid: {first_moment_of_area(cross_section(component,0),cy)}")
+print(f"First Moment of Area at 75mm: {first_moment_of_area(cross_section(component,0),75)}")
