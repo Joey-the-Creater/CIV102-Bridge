@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 compressive_strength = 6
 tensile_strength = 30
@@ -15,6 +16,10 @@ FOS_tension=100
 FOS_compression=100
 FOS_shear_plate=100
 FOS_glue=100
+FOS_buck_1=100
+FOS_buck_2=100
+FOS_buck_3=100
+FOS_buck_4=100
 # Function to calculate shear force and bending moment at a given train position
 def calculate_shear_force_and_bending_moment(train_position):
     real_x_train = [i + train_position for i in x_train]
@@ -59,6 +64,18 @@ for train_position in range(-52,292):
     for i in range(1201):
         if abs(shear_force[i])>abs(max_shear_force[i]):
             max_shear_force[i] = shear_force[i]
+            
+def local_buckling_stress(b, t, boundary_condition):
+    k=0
+    if boundary_condition == 'type 1':
+        k = 4.0
+    elif boundary_condition == 'type 2':
+        k = 0.425
+    elif boundary_condition == 'type 3':
+        k = 6
+    sigma_cr = (k * (math.pi ** 2) * young) / (12 * (1 - poisson ** 2)) * ((t / b) ** 2)
+    return sigma_cr
+
 def check_failure(component,pos):
     rectangle=cross_section(component,pos)
     flexural_stress_failure(rectangle,pos)
@@ -125,6 +142,8 @@ def shear_stress_failure(rectangles,crit_pos,V):
 
 def flexural_stress_failure(rectangles,pos):
     global FOS_tension,FOS_compression
+    global strength_buck_1,strength_buck_2,strength_buck_3
+    global FOS_buck_1,FOS_buck_2,FOS_buck_3
     I=second_moment_of_area(rectangles)
     height=centroid_of_rectangles(rectangles)
     stress_at_top=abs(max_bending_moment[pos]*(75+1.27-height)/I)
@@ -138,10 +157,22 @@ def flexural_stress_failure(rectangles,pos):
         FOS_compression=min(FOS_compression,tensile_strength/stress_at_bottom)
     except:
         FOS_compression=FOS_compression
-    if stress_at_top>compressive_strength:
-        print(f"Top of the beam at {pos}mm in compression fail")
-    if stress_at_bottom>tensile_strength:
-        print(f"Bottom of the beam at {pos}mm in tension fail")
+    try:
+        FOS_buck_1=min(FOS_buck_1,strength_buck_1/stress_at_top)
+    except:
+        FOS_buck_1=FOS_buck_1
+    try:
+        FOS_buck_2=min(FOS_buck_2,strength_buck_2/stress_at_top)
+    except:
+        FOS_buck_2=FOS_buck_2
+    try:
+        FOS_buck_3=min(FOS_buck_3,strength_buck_3/abs(max_bending_moment[pos]*(75-height)/I))
+    except:
+        FOS_buck_3=FOS_buck_3
+    #if stress_at_top>compressive_strength:
+    #    print(f"Top of the beam at {pos}mm in compression fail")
+    #if stress_at_bottom>tensile_strength:
+    #    print(f"Bottom of the beam at {pos}mm in tension fail")
 def centroid_of_rectangles(rectangles):
     """
     Calculate the centroid of multiple rectangles.
@@ -204,6 +235,11 @@ def cross_section(component, position):
     
     return cross_section_rectangles
 def check_failure(component):
+    global strength_buck_1,strength_buck_2,strength_buck_3
+    cy=centroid_of_rectangles(cross_section(component,0))
+    strength_buck_1=local_buckling_stress(67.46,1.27,'type 1')
+    strength_buck_2=local_buckling_stress(10,1.27,'type 2')
+    strength_buck_3=local_buckling_stress(75-cy,1.27,'type 3')
     for pos in range(0,1200):
         print(f"Checking position {pos}mm")
         rectangle=cross_section(component,pos)
@@ -219,3 +255,9 @@ print(f"FOS for tension: {FOS_tension}")
 print(f"FOS for compression: {FOS_compression}")
 print(f"FOS for shear at plate: {FOS_shear_plate}")
 print(f"FOS for shear at glue: {FOS_glue}")
+print(f"Strength of buckling type 1: {strength_buck_1}MPa",
+          f"Strength of buckling type 2: {strength_buck_2}MPa",
+          f"Strength of buckling type 3: {strength_buck_3}MPa")
+print(f"FOS for buckling type 1: {FOS_buck_1}")
+print(f"FOS for buckling type 2: {FOS_buck_2}")
+print(f"FOS for buckling type 3: {FOS_buck_3}")
