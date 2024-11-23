@@ -20,6 +20,12 @@ FOS_buck_1=100
 FOS_buck_2=100
 FOS_buck_3=100
 FOS_buck_4=100
+M_fail_tension=[0 for x in range(1201)]
+M_fail_compression=[0 for x in range(1201)]
+M_fail_buck=[0 for x in range(1201)]
+V_fail_shear=[0 for x in range(1201)]
+V_fail_glue=[0 for x in range(1201)]
+V_fail_buck=[0 for x in range(1201)]
 # Function to calculate shear force and bending moment at a given train position
 def calculate_shear_force_and_bending_moment(train_position):
     real_x_train = [i + train_position for i in x_train]
@@ -77,55 +83,48 @@ def local_buckling_stress(b, t, boundary_condition):
 def shear_buckling_stress(a, h):
     tao_cr = (5* (math.pi**2) * young) / (12 * (1 - poisson ** 2))*((1.27/h)**2+(1.27/a)**2)
     return tao_cr
-def check_failure(component,pos):
-    rectangle=cross_section(component,pos)
-    flexural_stress_failure(rectangle,pos)
-    shear_stress_failure(rectangle,pos)
-    pass
-def find_glued_joint(rectangles):
-    glued_joints = []
-    y_pos=[]
-    for (x, y, width, height) in rectangles:
-        y_pos.append(y+height)
-    for y in y_pos:
-        for i in range(len(rectangles)-1):
-            for j in range(i+1,len(rectangles)):
-                if (rectangles[i][1]+rectangles[i][3]==y and rectangles[j][1]==y) or (rectangles[i][1]==y and rectangles[j][1]+rectangles[j][3]==y):
-                    glued_joints.append(y)
-    return [75]
-def find_width_at_a_given_height(rectangles,height):
-    width_up=0
-    width_down=0
-    for i in range(len(rectangles)):
-        if rectangles[i][1]+rectangles[i][3]==height:
-            width_up+=rectangles[i][2]
-        if rectangles[i][1]==height:
-            width_down+=rectangles[i][2]
-    return min(width_up,width_down)
 
-def first_moment_of_area(rectangles, h):
+def first_moment_of_area(rectangles, h, verticel_glued_joints=None):
     centroid_y = centroid_of_rectangles(rectangles)
     first_moment = 0
-
-    for (x, y, width, height) in rectangles:
-        area = width * height
-        cy = y + height / 2
-        if y + height <= h:
+    if verticel_glued_joints is None:
+        for (x, y, width, height) in rectangles:
+            area = width * height
+            cy = y + height / 2
+            if y + height <= h:
+                first_moment += area * (centroid_y-cy)
+            else:
+                if y<h and y+height>h:
+                    new_height=h-y
+                    first_moment += width*new_height * (centroid_y-(y+new_height / 2))
+    else:
+        for (x, y, width, height) in verticel_glued_joints:
+            area = width * height
+            cy = y + height / 2
             first_moment += area * (centroid_y-cy)
-        else:
-            if y<h and y+height>h:
-                new_height=h-y
-                first_moment += width*new_height * (centroid_y-(y+new_height / 2))
     return first_moment
-def shear_stress_failure(rectangles,crit_pos,V,pos):
+def shear_stress_failure(rectangles,hori_glue,vert_glue,V,pos):
     global FOS_shear_plate,FOS_glue, FOS_buck_4
     V=abs(V)
-    for y in crit_pos:
+    I=second_moment_of_area(rectangles)
+    for (y,b) in hori_glue:
         Q=first_moment_of_area(rectangles,y)
-        b=find_width_at_a_given_height(rectangles,y)
-        I=second_moment_of_area(rectangles)
         shear=V*Q/(I*b)
         FOS_glue=min(FOS_glue,shear_strength_cemant/shear)
+        if V_fail_glue[pos]==0:
+            V_fail_glue[pos]=shear_strength_cemant/shear*V
+        else:
+            V_fail_glue[pos]=min(V_fail_glue[pos],shear_strength_cemant/shear*V)
+        if shear>shear_strength_cemant:
+            print(f"Beam at {y}mm in shear fail at glue")
+    for (cross_sec,b) in vert_glue:
+        Q=first_moment_of_area(rectangles,y,cross_sec)
+        shear=V*Q/(I*b)
+        FOS_glue=min(FOS_glue,shear_strength_cemant/shear)
+        if V_fail_glue[pos]==0:
+            V_fail_glue[pos]=shear_strength_cemant/shear*V
+        else:
+            V_fail_glue[pos]=min(V_fail_glue[pos],shear_strength_cemant/shear*V)
         if shear>shear_strength_cemant:
             print(f"Beam at {y}mm in shear fail at glue")
     cy=centroid_of_rectangles(rectangles)
@@ -137,11 +136,13 @@ def shear_stress_failure(rectangles,crit_pos,V,pos):
     I=second_moment_of_area(rectangles)
     shear=V*Q/(I*b)
     FOS_shear_plate=min(FOS_shear_plate,shear_strength_matboard/shear)
+    V_fail_shear[pos]=shear_strength_matboard/shear*V
     for i in range(len(tao_shear_buck)):
         if pos<=diaphram_pos[i+1] and pos>=diaphram_pos[i]:
             tao_cr=tao_shear_buck[i]
             break
     FOS_buck_4=min(FOS_buck_4,tao_cr/shear)
+    V_fail_buck[pos]=tao_cr/shear*V
     #if shear>shear_strength_matboard:
     #    print(f"Beam at {y}mm in shear fail at centroid")
 
@@ -150,29 +151,29 @@ def flexural_stress_failure(rectangles,pos):
     global strength_buck_1,strength_buck_2,strength_buck_3
     global FOS_buck_1,FOS_buck_2,FOS_buck_3
     I=second_moment_of_area(rectangles)
-    height=centroid_of_rectangles(rectangles)
-    stress_at_top=abs(max_bending_moment[pos]*(75+1.27-height)/I)
-    stress_at_bottom=abs(max_bending_moment[pos]*(height)/I)
+    cy=centroid_of_rectangles(rectangles)
+    stress_at_top=abs(max_bending_moment[pos]*(height_of_bridge-cy)/I)
+    stress_at_bottom=abs(max_bending_moment[pos]*(cy)/I)
     #print(f"Flexural Stress at the top: {stress_at_top}MPa",f"Flexural Stress at the bottom: {stress_at_bottom}MPa")
     try:
         FOS_tension=min(FOS_tension,tensile_strength/stress_at_bottom)
+        M_fail_tension[pos]=tensile_strength/stress_at_bottom*max_bending_moment[pos]
     except:
         FOS_tension=FOS_tension
     try:
         FOS_compression=min(FOS_compression,compressive_strength/stress_at_top)
+        M_fail_compression[pos]=compressive_strength/stress_at_top*max_bending_moment[pos]
     except:
         FOS_compression=FOS_compression
     try:
         FOS_buck_1=min(FOS_buck_1,strength_buck_1/stress_at_top)
+        FOS_buck_2=min(FOS_buck_2,strength_buck_2/stress_at_top)
+        FOS_buck_3=min(FOS_buck_3,strength_buck_3/stress_at_top)
+        M_fail_buck[pos]=min(strength_buck_1/stress_at_top*max_bending_moment[pos],strength_buck_2/stress_at_top*max_bending_moment[pos],strength_buck_3/stress_at_top*max_bending_moment[pos])
+
     except:
         FOS_buck_1=FOS_buck_1
-    try:
-        FOS_buck_2=min(FOS_buck_2,strength_buck_2/stress_at_top)
-    except:
         FOS_buck_2=FOS_buck_2
-    try:
-        FOS_buck_3=min(FOS_buck_3,strength_buck_3/abs(max_bending_moment[pos]*(75-height)/I))
-    except:
         FOS_buck_3=FOS_buck_3
     #if stress_at_top>compressive_strength:
     #    print(f"Top of the beam at {pos}mm in compression fail")
@@ -239,22 +240,37 @@ def cross_section(component, position):
             cross_section_rectangles.append((x, y, width, height))
     
     return cross_section_rectangles
+
 def check_failure(component):
-    global strength_buck_1,strength_buck_2,strength_buck_3
     for pos in range(0,1200):
         rectangle=cross_section(component,pos)
         flexural_stress_failure(rectangle,pos)
-        crit_pos=find_glued_joint(rectangle) #for glue
-        shear_stress_failure(rectangle,crit_pos,max_shear_force[pos],pos)
+        cross_sec_hori_glue=[]
+        cross_sec_vert_glue=[]
+        for (height, thickness, start_pos, end_pos) in hori_glued_joints:
+            if start_pos <= pos <= end_pos:
+                cross_sec_hori_glue.append((height, thickness))
+        for (cross_sec, thickness, start_pos, end_pos) in vert_glued_joints:
+            if start_pos <= pos <= end_pos:
+                cross_sec_vert_glue.append((cross_sec,thickness))
+        shear_stress_failure(rectangle,cross_sec_hori_glue,cross_sec_vert_glue,max_shear_force[pos],pos)
 #x_pos,y_pos,width,height,starting pos along the bridge, ending pos along the bridge
 component = [(10, 0, 80, 1.27,0,1200), (10, 1.27, 1.27, 75-1.27,0,1200), 
                 (90-1.27, 1.27, 1.27, 75-1.27,0,1200),(0,75,100,1.27,0,1200),
                 (10+1.27,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,5,1.27,0,1200)]
+height_of_bridge=75+1.27
+
+ #Height, thickness of the connection (The program can determine Q at the height, so we don't need to hard code the components that are in connection), 
+ # begining position along the bridge, ending position along the bridge
+hori_glued_joints =[(75,(5+1.27)*2,0,1200)]
+#Cross-sectional component, thickness of the connection, begining position along the bridge, ending position along the bridge
+vert_glued_joints = []
 
 diaphram_pos=[0,400,800,1200]
 tao_shear_buck=[]
 for i in range(len(diaphram_pos)-1):
     tao_shear_buck.append(shear_buckling_stress(diaphram_pos[i+1]-diaphram_pos[i],75-1.27))
+
 cy=centroid_of_rectangles(cross_section(component,0))
 strength_buck_1=local_buckling_stress(77.46,1.27,'type 1')
 strength_buck_2=local_buckling_stress(10,1.27,'type 2')
@@ -275,3 +291,63 @@ print(f"FOS for buckling type 3: {FOS_buck_3}")
 print(f"FOS for buckling type 4: {FOS_buck_4}")
 print(f"First Moment of Area at centroid: {first_moment_of_area(cross_section(component,0),cy)}")
 print(f"First Moment of Area at 75mm: {first_moment_of_area(cross_section(component,0),75)}")
+
+
+plt.figure(figsize=(12, 18))
+
+# Plot V_fail_shear
+plt.subplot(3, 2, 1)
+plt.plot(range(1201), V_fail_shear, label='V_fail_shear')
+plt.xlabel('Position along the bridge (mm)')
+plt.ylabel('Shear Force (N)')
+plt.title('Shear Force Failure Envelope (Shear)')
+plt.legend()
+plt.grid(True)
+
+# Plot V_fail_glue
+plt.subplot(3, 2, 2)
+plt.plot(range(1201), V_fail_glue, label='V_fail_glue')
+plt.xlabel('Position along the bridge (mm)')
+plt.ylabel('Shear Force (N)')
+plt.title('Shear Force Failure Envelope (Glue)')
+plt.legend()
+plt.grid(True)
+
+# Plot V_fail_buck
+plt.subplot(3, 2, 3)
+plt.plot(range(1201), V_fail_buck, label='V_fail_buck')
+plt.xlabel('Position along the bridge (mm)')
+plt.ylabel('Shear Force (N)')
+plt.title('Shear Force Failure Envelope (Buckling)')
+plt.legend()
+plt.grid(True)
+
+# Plot M_fail_compression
+plt.subplot(3, 2, 4)
+plt.plot(range(1201), M_fail_compression, label='M_fail_compression')
+plt.xlabel('Position along the bridge (mm)')
+plt.ylabel('Bending Moment (N-mm)')
+plt.title('Bending Moment Failure Envelope (Compression)')
+plt.legend()
+plt.grid(True)
+
+# Plot M_fail_tension
+plt.subplot(3, 2, 5)
+plt.plot(range(1201), M_fail_tension, label='M_fail_tension')
+plt.xlabel('Position along the bridge (mm)')
+plt.ylabel('Bending Moment (N-mm)')
+plt.title('Bending Moment Failure Envelope (Tension)')
+plt.legend()
+plt.grid(True)
+
+# Plot M_fail_buck
+plt.subplot(3, 2, 6)
+plt.plot(range(1201), M_fail_buck, label='M_fail_buck')
+plt.xlabel('Position along the bridge (mm)')
+plt.ylabel('Bending Moment (N-mm)')
+plt.title('Bending Moment Failure Envelope (Buckling)')
+plt.legend()
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
