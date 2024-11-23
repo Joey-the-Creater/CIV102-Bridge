@@ -8,10 +8,10 @@ young=4000
 poisson=0.2
 shear_strength_cemant=2
 x_train = [52, 228, 392, 568, 732, 908]
-x_start_train=120
+x_start_train=76
 x_start = 0
 x_end = 1200
-p_train = [182 / 2, 182 / 2, 135 / 2, 135 / 2, 135 / 2, 135 / 2]
+p_train = [400/6]*6
 real_x_train = [i + x_start_train for i in x_train]
 
 start_moment = sum(real_x_train[i] * p_train[i] for i in range(6))
@@ -32,7 +32,7 @@ for i in range(6):
 bending_moment.append(0)
 
 # Convert bending moment to 10^4 Nmm
-bmd = [bm / 10000 for bm in bending_moment]
+bmd = [bm for bm in bending_moment]
 
 # Plotting shear force diagram
 plt.figure(figsize=(12, 6))
@@ -52,7 +52,7 @@ plt.subplot(2, 1, 2)
 plt.plot([0] + real_x_train + [x_end], bmd)
 plt.title('Bending Moment Diagram')
 plt.xlabel('Position along the bridge (mm)')
-plt.ylabel('Bending Moment (10^4 Nmm)')
+plt.ylabel('Bending Moment (Nmm)')
 plt.grid(True)
 
 # Annotate bending moment values
@@ -62,7 +62,7 @@ for i, (x, y) in enumerate(zip([0] + real_x_train + [x_end], bmd)):
 plt.tight_layout()
 plt.show()
 
-
+print(max(bending_moment))
 def centroid_of_rectangles(rectangles):
     """
     Calculate the centroid of multiple rectangles.

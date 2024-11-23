@@ -10,8 +10,8 @@ shear_strength_cemant = 2
 x_train = [52, 228, 392, 568, 732, 908]
 x_start = 0
 x_end = 1200
-p_train = [135 / 2, 135 / 2, 135 / 2, 135 / 2,182 / 2, 182 / 2]
-
+#p_train = [135 / 2, 135 / 2, 135 / 2, 135 / 2,182 / 2, 182 / 2]
+p_train = [400/6]*6
 # Function to calculate shear force and bending moment at a given train position
 def calculate_shear_force_and_bending_moment(train_position):
     real_x_train = [i + train_position for i in x_train]
@@ -56,6 +56,8 @@ for train_position in range(-52,293):
     for i in range(1201):
         if abs(shear_force[i])>abs(max_shear_force[i]):
             max_shear_force[i] = shear_force[i]
+    if abs(max(bending_moment)-69445.3333)<1e-3:
+        print(train_position)
 # Plotting envelope functions
 plt.figure(figsize=(12, 6))
 # Plotting maximum shear force envelope

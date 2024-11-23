@@ -11,7 +11,7 @@ shear_strength_cemant = 2
 x_train = [52, 228, 392, 568, 732, 908]
 x_start = 0
 x_end = 1200
-p_train = [400/6]*6
+p_train = [135 / 2, 135 / 2, 135 / 2, 135 / 2,182 / 2, 182 / 2]
 FOS_tension=100
 FOS_compression=100
 FOS_shear_plate=100
@@ -62,14 +62,14 @@ def calculate_shear_force_and_bending_moment(train_position):
 max_shear_force = [0 for x in range(x_end + 1)]
 max_bending_moment = [0 for x in range(x_end + 1)]
 # Calculate envelope functions
-for train_position in range(-52,293):
+for train_position in range(-51,293):
     shear_force, bending_moment = calculate_shear_force_and_bending_moment(train_position)
     for i in range(1201):
         max_bending_moment[i] = max(max_bending_moment[i], bending_moment[i])
     for i in range(1201):
         if abs(shear_force[i])>abs(max_shear_force[i]):
             max_shear_force[i] = shear_force[i]
-print(f"Max Bending Moment{max(max_bending_moment)}",f"Max Shear Force:{max(max_shear_force)}" )
+print(f"Max Bending Moment: {max(max_bending_moment)}",f"Max Shear Force: {max(max_shear_force)}" )
 def local_buckling_stress(b, t, boundary_condition):
     k=0
     if boundary_condition == 'type 1':
@@ -129,7 +129,7 @@ def shear_stress_failure(rectangles,hori_glue,vert_glue,V,pos):
             print(f"Beam at {y}mm in shear fail at glue")
     cy=centroid_of_rectangles(rectangles)
     Q=first_moment_of_area(rectangles,cy)
-    b=0
+    b=1.27*2
     for i in range(len(rectangles)):
         if rectangles[i][1]<cy and rectangles[i][1]+rectangles[i][3]>cy:
             b+=rectangles[i][2]
@@ -255,24 +255,27 @@ def check_failure(component):
                 cross_sec_vert_glue.append((cross_sec,thickness))
         shear_stress_failure(rectangle,cross_sec_hori_glue,cross_sec_vert_glue,max_shear_force[pos],pos)
 #x_pos,y_pos,width,height,starting pos along the bridge, ending pos along the bridge
-component = [(10, 0, 80, 1.27,0,1200), (10, 1.27, 1.27, 75-1.27,0,1200), 
-                (90-1.27, 1.27, 1.27, 75-1.27,0,1200),(0,75,100,1.27,0,1200),
-                (10+1.27,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,5,1.27,0,1200)]
-height_of_bridge=75+1.27
-
+component = [(5,0,75,1.27,0,1200),
+            (5,1.27,73.73,1.27,0,1200), 
+                (78.73,1.27,73.73,1.27,0,1200),
+                (73.73,73.75,5,1.270,0,1200),
+                (6.27,73.75,5,1.270,0,1200),
+                (0,75,85,1.27,0,1200),
+                (0,76.27,85,1.27,0,1200)]
+height_of_bridge=75+1.27*2
+print(f"Area of the cross section: {sum([i[2]*i[3] for i in component])}")
  #Height, thickness of the connection (The program can determine Q at the height, so we don't need to hard code the components that are in connection), 
  # begining position along the bridge, ending position along the bridge
-hori_glued_joints =[(75,(5+1.27)*2,0,1200)]
+hori_glued_joints =[(75,(5+1.27)*2,0,1200),(75+1.27,85,0,1200)]
 #Cross-sectional component, thickness of the connection, begining position along the bridge, ending position along the bridge
 vert_glued_joints = []
 
 diaphram_pos=[0,400,800,1200]
 tao_shear_buck=[]
-for i in range(len(diaphram_pos)-1):
-    tao_shear_buck.append(shear_buckling_stress(diaphram_pos[i+1]-diaphram_pos[i],75-1.27))
-
 cy=centroid_of_rectangles(cross_section(component,0))
-strength_buck_1=local_buckling_stress(77.46,1.27,'type 1')
+for i in range(len(diaphram_pos)-1):
+    tao_shear_buck.append(shear_buckling_stress(diaphram_pos[i+1]-diaphram_pos[i],height_of_bridge-cy))
+strength_buck_1=local_buckling_stress(77.46,1.27*2,'type 1')
 strength_buck_2=local_buckling_stress(10,1.27,'type 2')
 strength_buck_3=local_buckling_stress(75-cy,1.27,'type 3')
 check_failure(component)
@@ -281,10 +284,10 @@ print(f"FOS for tension: {FOS_tension}")
 print(f"FOS for compression: {FOS_compression}")
 print(f"FOS for shear at plate: {FOS_shear_plate}")
 print(f"FOS for shear at glue: {FOS_glue}")
-print(f"Strength of buckling type 1: {strength_buck_1}MPa",
-          f"Strength of buckling type 2: {strength_buck_2}MPa",
-          f"Strength of buckling type 3: {strength_buck_3}MPa",
-          f"Strength of buckling type 4: {tao_shear_buck}MPa")
+print(f"Strength of buckling type 1: {strength_buck_1}MPa")
+print(f"Strength of buckling type 2: {strength_buck_2}MPa")
+print(f"Strength of buckling type 3: {strength_buck_3}MPa")
+print(f"Strength of buckling type 4: {tao_shear_buck}MPa")
 print(f"FOS for buckling type 1: {FOS_buck_1}")
 print(f"FOS for buckling type 2: {FOS_buck_2}")
 print(f"FOS for buckling type 3: {FOS_buck_3}")
