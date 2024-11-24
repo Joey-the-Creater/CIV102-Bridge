@@ -12,6 +12,7 @@ x_train = [52, 228, 392, 568, 732, 908]
 x_start = 0
 x_end = 1200
 p_train = [135 / 2, 135 / 2, 135 / 2, 135 / 2,182 / 2, 182 / 2]
+#p_train=[400/6]*6
 M_fail_tension=[0 for x in range(1201)]
 M_fail_compression=[0 for x in range(1201)]
 M_fail_buck=[0 for x in range(1201)]
@@ -245,66 +246,60 @@ component=[(10, 0, 80, 1.27,0,1200), (10, 1.27, 1.27, 75-1.27,0,1200),
                 (90-1.27, 1.27, 1.27, 75-1.27,0,1200),(0,75,100,1.27,0,1200),
                 (10+1.27,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,5,1.27,0,1200)]
 '''
-for hei in range(200,59,-20):
-    print(hei)
-    print(min_FOS)
-    for bottom in range(top-1,40,-1):
-        for connection in range(40,2,-1):
-            height=hei-1.27*2
-            FOS_tension=1000
-            FOS_compression=1000
-            FOS_shear_plate=1000
-            FOS_glue=1000
-            FOS_buck_1=1000
-            FOS_buck_2=1000
-            FOS_buck_3=1000
-            FOS_buck_4=1000
-            height_of_bridge=height+1.27*2
-            #x_pos,y_pos,width,height,starting pos along the bridge, ending pos along the bridge
-            component=[(0,0,bottom,1.27,0,1200),
-            (50,1.27,1.27,height-1.27,0,1200),
-            (50,1.27,1.27,height-1.27,0,1200),
-            (0,height-1.27,connection,1.27,0,1200), 
-            (0,height-1.27,connection,1.27,0,1200), 
-            (0,height,bottom,1.27,0,1200),
-            (0,height+1.27,top,1.27,0,1200)]
-            if sum([i[2]*i[3] for i in component]) > 600 or sum([i[2]*i[3] for i in component]) < 595:
-                continue
-            else:
-                #Height, thickness of the connection (The program can determine Q at the height, so we don't need to hard code the components that are in connection), 
-                # begining position along the bridge, ending position along the bridge
-                hori_glued_joints =[(height,(connection+1.27)*2,0,1200),(height+1.27,bottom,0,1200)]
-                #Cross-sectional component, thickness of the connection, begining position along the bridge, ending position along the bridge
-                vert_glued_joints = []
+FOS_tension=1000
+FOS_compression=1000
+FOS_shear_plate=1000
+FOS_glue=1000
+FOS_buck_1=1000
+FOS_buck_2=1000
+FOS_buck_3=1000
+FOS_buck_4=1000
+height_of_bridge=75+1.27*2
+#x_pos,y_pos,width,height,starting pos along the bridge, ending pos along the bridge
+'''
+component=[(0,0,bottom,1.27,0,1200),
+(50,1.27,1.27,height-1.27,0,1200),
+(50,1.27,1.27,height-1.27,0,1200),
+(0,height-1.27,connection,1.27,0,1200), 
+(0,height-1.27,connection,1.27,0,1200), 
+(0,height,bottom,1.27,0,1200),
+(0,height+1.27,top,1.27,0,1200)]
+'''
+component=[(10, 0, 80, 1.27,0,1200), 
+           (10, 1.27, 1.27, 75-1.27,0,1200), (90-1.27, 1.27, 1.27, 75-1.27,0,1200),
+                (10+1.27,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,5,1.27,0,1200),(90-1.27-5,75-1.27,67.46,1.27,0,1200),
+                (90-1.27-5,75,80,1.27,0,1200),(0,75+1.27,100,1.27,0,1200)]
+#Height, thickness of the connection (The program can determine Q at the height, so we don't need to hard code the components that are in connection), 
+# begining position along the bridge, ending position along the bridge
+hori_glued_joints =[(75,80,0,1200),(75+1.27,80,0,1200)]
+#Cross-sectional component, thickness of the connection, begining position along the bridge, ending position along the bridge
+vert_glued_joints = []
 
-                diaphram_pos=[0,200,400,600,800,1000,1200]
-                tao_shear_buck=[]
-                cy=centroid_of_rectangles(cross_section(component,0))
-                for i in range(len(diaphram_pos)-1):
-                    tao_shear_buck.append(shear_buckling_stress(diaphram_pos[i+1]-diaphram_pos[i],height_of_bridge))
-                strength_buck_1=local_buckling_stress(bottom-1.27*2,1.27*2,'type 1')
-                strength_buck_2=local_buckling_stress((top-bottom)/2,1.27,'type 2')
-                strength_buck_3=local_buckling_stress(height-cy,1.27,'type 3')
-                check_failure(component)
-                if min_FOS<min([FOS_tension,FOS_compression,FOS_shear_plate,FOS_glue,FOS_buck_1,FOS_buck_2,FOS_buck_3,FOS_buck_4]):
-                    min_FOS=min([FOS_tension,FOS_compression,FOS_shear_plate,FOS_glue,FOS_buck_1,FOS_buck_2,FOS_buck_3,FOS_buck_4])
-                    min_shape=component
-                    cur_FOS=[FOS_tension,FOS_compression,FOS_shear_plate,FOS_glue,FOS_buck_1,FOS_buck_2,FOS_buck_3,FOS_buck_4]
-                    cur_strength=[strength_buck_1,strength_buck_2,strength_buck_3,tao_shear_buck]
-print(min_FOS)
-print(min_shape)
-print(sum([i[2]*i[3] for i in min_shape]))
-print(cur_FOS)
-print(cur_strength)
-print(centroid_of_rectangles(cross_section(min_shape,0)))
-print(second_moment_of_area(cross_section(min_shape,0)))
-print(first_moment_of_area(cross_section(min_shape,0),centroid_of_rectangles(cross_section(min_shape,0))))
+diaphram_pos=[0,400,800,1200]
+tao_shear_buck=[]
+cy=centroid_of_rectangles(cross_section(component,0))
+for i in range(len(diaphram_pos)-1):
+    tao_shear_buck.append(shear_buckling_stress(diaphram_pos[i+1]-diaphram_pos[i],height_of_bridge))
+strength_buck_1=local_buckling_stress(80-1.27*2,1.27*3,'type 1')
+strength_buck_2=local_buckling_stress((100-80)/2,1.27,'type 2')
+strength_buck_3=local_buckling_stress(75-cy,1.27,'type 3')
+check_failure(component)
+print(f"Area of the component: {sum([width*height for x,y,width,height,start_pos,end_pos in component])}mm^2")
+print(f"Centroid of the rectangles is at: {cy}mm")
+print(f"Second moment of area of the rectangles is: {second_moment_of_area(cross_section(component,0))/(10**6)} 10e6 mm^4")
+print(f"first moment of area of the rectangles at centroid is: {first_moment_of_area(cross_section(component,0),cy)} mm^3")
+print(f"first moment of area of the rectangles at glue is: {first_moment_of_area(cross_section(component,0),75)} mm^3")
+print(f"Strength of buckling 1: {strength_buck_1}, Strength of buckling 2: {strength_buck_2}, Strength of buckling 3: {strength_buck_3}")
+print(f"Strength of shear buckling: {tao_shear_buck}")
+print(f"FOS_tension: {FOS_tension}, FOS_compression: {FOS_compression}, FOS_shear_plate: {FOS_shear_plate}, FOS_glue: {FOS_glue}")
+print(f"FOS_buck_1: {FOS_buck_1}, FOS_buck_2: {FOS_buck_2}, FOS_buck_3: {FOS_buck_3}, FOS_buck_4: {FOS_buck_4}")
+
 '''
 plt.figure(figsize=(12, 18))
-
+x=list(range(1201))
 # Plot V_fail_shear
 plt.subplot(3, 2, 1)
-plt.plot(range(1201), V_fail_shear, label='V_fail_shear')
+plt.plot([0]+x, [0]+V_fail_shear, label='V_fail_shear')
 plt.xlabel('Position along the bridge (mm)')
 plt.ylabel('Shear Force (N)')
 plt.title('Shear Force Failure Envelope (Shear)')
@@ -313,7 +308,7 @@ plt.grid(True)
 
 # Plot V_fail_glue
 plt.subplot(3, 2, 2)
-plt.plot(range(1201), V_fail_glue, label='V_fail_glue')
+plt.plot([0]+x, [0]+V_fail_glue, label='V_fail_glue')
 plt.xlabel('Position along the bridge (mm)')
 plt.ylabel('Shear Force (N)')
 plt.title('Shear Force Failure Envelope (Glue)')
@@ -322,7 +317,7 @@ plt.grid(True)
 
 # Plot V_fail_buck
 plt.subplot(3, 2, 3)
-plt.plot(range(1201), V_fail_buck, label='V_fail_buck')
+plt.plot([0]+x, [0]+V_fail_buck, label='V_fail_buck')
 plt.xlabel('Position along the bridge (mm)')
 plt.ylabel('Shear Force (N)')
 plt.title('Shear Force Failure Envelope (Buckling)')
