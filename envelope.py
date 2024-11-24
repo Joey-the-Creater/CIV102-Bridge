@@ -10,8 +10,8 @@ shear_strength_cemant = 2
 x_train = [52, 228, 392, 568, 732, 908]
 x_start = 0
 x_end = 1200
-#p_train = [135 / 2, 135 / 2, 135 / 2, 135 / 2,182 / 2, 182 / 2]
-p_train = [400/6]*6
+p_train = [182 / 2, 182 / 2,135 / 2, 135 / 2, 135 / 2, 135 / 2]
+#p_train = [400/6]*6
 # Function to calculate shear force and bending moment at a given train position
 def calculate_shear_force_and_bending_moment(train_position):
     real_x_train = [i + train_position for i in x_train]
