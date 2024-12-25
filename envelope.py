@@ -10,8 +10,8 @@ shear_strength_cemant = 2
 x_train = [52, 228, 392, 568, 732, 908]
 x_start = 0
 x_end = 1200
-#p_train = [182 / 2, 182 / 2,135 / 2, 135 / 2, 135 / 2, 135 / 2] #Load Case 2
-p_train = [400/6]*6 #Load Case 1
+p_train = [135 / 2, 135 / 2, 135 / 2, 135 / 2,182 / 2, 182 / 2] #Load Case 2
+#p_train = [400/6]*6 #Load Case 1
 
 # Function to calculate shear force and bending moment at a given train position
 def calculate_shear_force_and_bending_moment(train_position):
@@ -82,6 +82,12 @@ max_shear_force_position = max_shear_force.index(max_shear_force_value)
 plt.subplot(2, 1, 1)
 plt.plot(max_shear_force_position, max_shear_force_value, 'ro')
 plt.text(max_shear_force_position, max_shear_force_value, f'({max_shear_force_position}, {max_shear_force_value})')
+# Marking the shear force for every 200mm
+for pos in range(0, x_end + 1, 200):
+    shear_value = max_shear_force[pos]
+    plt.subplot(2, 1, 1)
+    plt.plot(pos, shear_value, 'bo')
+    plt.text(pos, shear_value, f'({pos}, {shear_value})')
 # Marking the highest bending moment on the graph
 max_bending_moment_value = max(max_bending_moment)
 max_bending_moment_position = max_bending_moment.index(max_bending_moment_value)
